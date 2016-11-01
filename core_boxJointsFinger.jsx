@@ -1,13 +1,9 @@
 /**
- * ExtendScript Adobe Illustrator CS6+
+ * ExtendScript Adobe Illustrator CS4+
  * (c)MaratShagiev m_js@bk.ru
  * The generator of the box with the edges connectors of the type "finger"
  *
  * core
- *
- * really we have three original sides: width, height and depth
- * another ones we can get from this three original
- * through operations: mirror, rotate, reverse and move
  * */
 
 //@target illustrator
@@ -15,23 +11,23 @@
 /**
  * values are taken from the interface
  * */
-var options  = {
-  boxW:  100,
-  boxH:  125,
-  boxD:  60,
-  tabW:  10,
+var options = {
+  boxW : 100,
+  boxH : 125,
+  boxD : 60,
+  tabW : 10,
   thick: 5,
   units: 'pt'
 }
 /**
- * CONST
+ * GLOBAL_CONSTANTS
  * */
-var PT_TO_MM = 2.834645668;
-var MM_TO_PT = 0.352777778;
+PT_TO_MM = 2.834645668;
+MM_TO_PT = 0.352777778;
 
-(function genBoxFingerJoints(opts) {
+(function genBoxFingerJoints (opts) {
 
-  addPointsMethods();
+  addPointsMethods ();
 
   var boxW  = opts.boxW || 115,
       boxH  = opts.boxH || 70,
@@ -42,86 +38,141 @@ var MM_TO_PT = 0.352777778;
   var doc = activeDocument,
       lay = doc.activeLayer;
 
-  var frontShape = makeFrontShape();
-  var leftShape = makeLeftShape();
-  var bottomShape = makeBottomShape();
+  var frontPnts = getShapePnts ('front', 0, 0);
+  var backPnts  = getShapePnts ('back', boxW, 0);
+  var rightPnts = getShapePnts ('right', boxW * 2, 0);
+  var leftPnts  = getShapePnts ('left', boxW * 2, -boxH);
+  var bottPnts  = getShapePnts ('bottom', 0, -boxH);
+  var topPnts   = getShapePnts ('top', boxW, -boxH);
+
+  addShape (frontPnts);
+  addShape (backPnts);
+  addShape (rightPnts);
+  addShape (leftPnts);
+  addShape (bottPnts);
+  addShape (topPnts);
 
   /**
-   * Operating with three basic elements to build three basic box wall
+   * LIBRARY
    * */
 
-  function makeFrontShape() {
-    var topPnts   = getPnts(boxW);
-    var rightPnts = getPnts(boxH).rotatePnts(true).mvPnts(boxW, null);
-    var bottPnts  = getPnts(boxW).reflectPnts(null, 0).mvPnts(null, boxH).reverse();
-    var leftPnts  = getPnts(boxH).rotatePnts(true).reflectPnts(0, null).reverse();
+  /**
+   * add the path item and set attributes to
+   * @param {Array} pnts - array of points [[x0, y0], [x1, y1], ... [xn, yn]]
+   * @return {PathItem} shape - object of Illustrator's class PathItem
+   * */
+  function addShape (pnts) {
+    var fillCol = new CMYKColor ();
+    var strkCol = new CMYKColor ();
 
-    rightPnts.splice(0, 1);
-    bottPnts.splice(0, 1);
-    leftPnts.splice(0, 1);
-    leftPnts.splice(leftPnts.length - 1);
+    fillCol.cyan   = 30;
+    fillCol.yellow = 90;
+    strkCol.black  = 99;
 
-    var resultPoints = topPnts.concat(rightPnts, bottPnts, leftPnts);
-
-    var shape = lay.pathItems.add();
-    shape.setEntirePath(resultPoints);
-    shape.closed = true;
+    var shape = lay.pathItems.add ();
+    shape.setEntirePath (pnts);
+    shape.closed      = true;
+    shape.fillColor   = fillCol;
+    shape.strokeColor = strkCol;
+    shape.strokeWidth = 0.1;
     return shape;
   }
 
-  function makeLeftShape() {
-    var topPnts   = getPnts(boxD, thick);
-    var rightPnts = getPnts(boxH).rotatePnts(true).reflectPnts(-thick / 2, null).mvPnts(boxD, null);
-    var bottPnts  = getPnts(boxD, thick).reflectPnts(null, 0).mvPnts(null, boxH).reverse();
-    var leftPnts  = getPnts(boxH).rotatePnts(true).mvPnts(thick, null).reverse();
+  /**
+   * @param {String} dimCase - 'front', 'back', 'right', 'left', 'bottom', 'top'
+   * @param {Number} x - top-left coordinate of the shape
+   * @param {Number} y - top-left coordinate of the shape
+   * @return {Array} resPnts - array of points [[x0, y0], [x1, y1], ... [xn, yn]]
+   * */
+  function getShapePnts (dimCase, x, y) {
+    var topPnts,
+        rightPnts,
+        bottPnts,
+        leftPnts;
 
-    rightPnts.splice(0, 1);
-    bottPnts.splice(0, 1);
-    leftPnts.splice(0, 1);
-    leftPnts.splice(leftPnts.length - 1);
+    switch (dimCase) {
+      case 'front':
+      case 'back':
+        topPnts   = getPnts ({
+          boxDim: boxW, x: x, y: y
+        });
+        rightPnts = getPnts ({
+          boxDim: boxH, x: x, y: y
+        }).rotatePnts (true).mvPnts (boxW, null);
+        bottPnts  = getPnts ({
+          boxDim: boxW, x: x, y: y
+        }).reflectPnts (null, y).mvPnts (null, boxH).reverse ();
+        leftPnts  = getPnts ({
+          boxDim: boxH, x: x, y: y
+        }).rotatePnts (true).reflectPnts (x, null).reverse ();
+        break;
 
-    var resPnts = topPnts.concat(rightPnts, bottPnts, leftPnts);
+      case 'right':
+      case 'left':
+        topPnts   = getPnts ({
+          boxDim: boxD, x: x, y: y, shftExtrmX: thick
+        });
+        rightPnts = getPnts ({
+          boxDim: boxH, x: x, y: y
+        }).rotatePnts (true).reflectPnts (x - thick / 2, null).mvPnts (boxD, null);
+        bottPnts  = getPnts ({
+          boxDim: boxD, x: x, y: y, shftExtrmX: thick
+        }).reflectPnts (null, y).mvPnts (null, boxH).reverse ();
+        leftPnts  = getPnts ({
+          boxDim: boxH, x: x, y: y
+        }).rotatePnts (true).mvPnts (thick, null).reverse ();
+        break;
 
-    var shape = lay.pathItems.add();
-    shape.setEntirePath(resPnts);
-    return shape;
-  }
+      case 'bottom':
+      case 'top':
+        topPnts   = getPnts ({
+          boxDim: boxW, x: x, y: y, shftExtrmX: thick
+        }).reflectPnts (null, y - thick / 2);
+        rightPnts = getPnts ({
+          boxDim: boxD, x: x, y: y,
+        }).rotatePnts (true).reflectPnts (x - thick / 2, null).mvPnts (boxW, null);
+        bottPnts  = getPnts ({
+          boxDim: boxW, x: x, y: y, shftExtrmX: thick
+        }).mvPnts (null, boxD - thick).reverse ();
+        leftPnts  = getPnts ({
+          boxDim: boxD, x: x, y: y,
+        }).rotatePnts (true).mvPnts (thick, null).reverse ();
+        break;
 
-  function makeBottomShape() {
-    var topPnts   = getPnts(boxW, thick).reflectPnts(null, -thick / 2);
-    var rightPnts = getPnts(boxD).rotatePnts(true).reflectPnts(-thick / 2, null).mvPnts(boxW, null);
-    var bottPnts  = getPnts(boxW, thick).mvPnts(null, boxD - thick).reverse();
-    var leftPnts  = getPnts(boxD).rotatePnts(true).mvPnts(thick, null).reverse();
+      default:
+        break;
+    }
 
-    rightPnts.splice(0, 1);
-    rightPnts.splice(rightPnts.length - 1);
-    leftPnts.splice(0, 1);
-    leftPnts.splice(leftPnts.length - 1);
+    rightPnts.splice (0, 1);
+    rightPnts.splice (rightPnts.length - 1);
+    leftPnts.splice (0, 1);
+    leftPnts.splice (leftPnts.length - 1);
 
-    var resPnts = topPnts.concat(rightPnts, bottPnts, leftPnts);
+    var resPnts = topPnts.concat (rightPnts, bottPnts, leftPnts);
 
-    var shape = lay.pathItems.add();
-    shape.setEntirePath(resPnts);
-    return shape;
+    return resPnts;
   }
 
   /**
    * get width or height points
-   * @param {Number} boxDimension - box height or box width dimention value
-   * @param {Number} shiftExtremeX - coordinate (for width and heihgt = 0, for depth = thickness)
+   * @param {{shftExtrmX: {Number}, boxDim: {Number}, x: {Number}, y: {Number}}} opts
+   * @return {Array} points - array of points to the base path item
    * */
-  function getPnts(boxDimension, shiftExtremeX) {
-    var x = 0;
-    var y = 0,
-        i;
+  function getPnts (opts) {
+    var shiftExtremeX = opts.shftExtrmX || 0;
+    var boxDimension  = opts.boxDim || 100;
+    var x             = opts.x || 0;
+    var y             = opts.y || 0;
+    var i;
 
     var points        = [],
         centerTabW    = tabW,
         margTabW,
-        centerTabNumb = Math.ceil(boxDimension / centerTabW) - 5;
+        centerTabNumb = Math.ceil (boxDimension / centerTabW) - 5;
 
     /**
-     * todo: the correctness of the box values should be checked here or in the interface???
+     * todo: ??? is correctness of the box values should be checked in the interface ???
+     * todo: this needs in-depth workup
      * */
     if (centerTabNumb < 2) {
       centerTabW    = boxDimension / 5;
@@ -133,27 +184,26 @@ var MM_TO_PT = 0.352777778;
       }
       margTabW = (boxDimension - centerTabW * centerTabNumb) / 4;
     }
-
     /**
      * for first margin points
      * */
-    points.push([x, y], [x + margTabW, y], [x + margTabW, y - thick], [x + margTabW * 2, y - thick]);
+    points.push ([x, y], [x + margTabW, y], [x + margTabW, y - thick], [x + margTabW * 2, y - thick]);
     x += margTabW * 2;
     /**
      * center
      * */
     for (i = 0; i < centerTabNumb; i++) {
       if ((i % 2)) {
-        points.push([x + centerTabW, y - thick]);
+        points.push ([x + centerTabW, y - thick]);
       } else {
-        points.push([x, y], [x + centerTabW, y], [x + centerTabW, y - thick]);
+        points.push ([x, y], [x + centerTabW, y], [x + centerTabW, y - thick]);
       }
       x += centerTabW;
     }
     /**
      * three last margin points
      * */
-    points.push(
+    points.push (
       [x + margTabW, y - thick], [x + margTabW, y], [x + margTabW * 2, y]);
 
     if (shiftExtremeX) {
@@ -164,28 +214,15 @@ var MM_TO_PT = 0.352777778;
     return points;
   }
 
-  function addPointsMethods() {
+  function addPointsMethods () {
     var i;
-    /**
-     * copy the points array to the new array
-     * @return{Array} cp - copy of this array
-     * */
-    Array.prototype.cpPnts = function() {
-      var cp = [];
-      for (i = 0; i < this.length; i++) {
-        cp[i]    = [];
-        cp[i][0] = this[i][0];
-        cp[i][1] = this[i][1];
-      }
-      return cp;
-    }
     /**
      * change in situ array of point [ [x,y], [x1,y1], ..., [xn, yn] ]
      * mirror each value by axis value
      * @param {Number, Null} axisX
      * @param {Number, Null} axisY
      * */
-    Array.prototype.reflectPnts = function(axisX, axisY) {
+    Array.prototype.reflectPnts = function (axisX, axisY) {
       if (axisX !== null) {
         for (i = 0; i < this.length; i++) {
           this[i][0] = axisX * 2 - this[i][0];
@@ -204,7 +241,7 @@ var MM_TO_PT = 0.352777778;
      * @param {Number, Null} deltaX
      * @param {Number, Null} deltaY
      * */
-    Array.prototype.mvPnts = function(deltaX, deltaY) {
+    Array.prototype.mvPnts = function (deltaX, deltaY) {
       if (deltaX !== null) {
         for (i = 0; i < this.length; i++) {
           this[i][0] += deltaX;
@@ -221,7 +258,7 @@ var MM_TO_PT = 0.352777778;
      * rotate to 90° clockwase or counterclockwise about start of points array
      * @param {Boolean} clockwise - if false rotate is counterclockwise
      * */
-    Array.prototype.rotatePnts = function(clockwise) {
+    Array.prototype.rotatePnts = function (clockwise) {
       var x0 = this[0][0],
           y0 = this[0][1];
       var x, y;
@@ -249,4 +286,4 @@ var MM_TO_PT = 0.352777778;
 
   }
 
-}(options));
+} (options));
