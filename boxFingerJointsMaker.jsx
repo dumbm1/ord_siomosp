@@ -3,7 +3,13 @@
  * (c) Marat Shagiev
  * e-mail: m_js@bk.ru
  * 11.11.2016
+ *
+ * The generator of the box with the edges connectors of the type "finger" for laser cutting
  * */
+
+//todo: rewrite as OOP
+//todo: select API
+//todo: make version 2.0.0
 
 //@target illustrator
 
